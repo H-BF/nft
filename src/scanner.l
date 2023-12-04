@@ -250,6 +250,7 @@ addrstring	({macaddr}|{ip4addr}|{ip6addr})
 %s SCANSTATE_STMT_DUP
 %s SCANSTATE_STMT_FWD
 %s SCANSTATE_STMT_LOG
+%s SCANSTATE_STMT_NDPI
 %s SCANSTATE_STMT_NAT
 %s SCANSTATE_STMT_REJECT
 %s SCANSTATE_STMT_SYNPROXY
@@ -416,6 +417,9 @@ addrstring	({macaddr}|{ip4addr}|{ip6addr})
 	"quotas"		{ return QUOTAS; }
 	"rules"			{ return RULES; }
 }
+
+"ndpi"			{ scanner_push_start_cond(yyscanner, SCANSTATE_STMT_NDPI); return NDPI; }
+<SCANSTATE_STMT_NDPI>"host"		{ return HOSTNAME; }
 
 "log"			{ scanner_push_start_cond(yyscanner, SCANSTATE_STMT_LOG); return LOG; }
 <SCANSTATE_STMT_LOG,SCANSTATE_STMT_NAT,SCANSTATE_IP,SCANSTATE_IP6>"prefix"		{ return PREFIX; }

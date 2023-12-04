@@ -115,6 +115,7 @@ void handle_merge(struct handle *dst, const struct handle *src)
 {
 	if (dst->family == 0)
 		dst->family = src->family;
+
 	if (dst->table.name == NULL && src->table.name != NULL) {
 		dst->table.name = xstrdup(src->table.name);
 		dst->table.location = src->table.location;
@@ -129,8 +130,10 @@ void handle_merge(struct handle *dst, const struct handle *src)
 	}
 	if (dst->flowtable.name == NULL && src->flowtable.name != NULL)
 		dst->flowtable.name = xstrdup(src->flowtable.name);
+
 	if (dst->obj.name == NULL && src->obj.name != NULL)
 		dst->obj.name = xstrdup(src->obj.name);
+
 	if (dst->handle.id == 0)
 		dst->handle = src->handle;
 	if (dst->position.id == 0)

@@ -19,6 +19,7 @@
 #include <arpa/inet.h>
 #include <linux/netfilter.h>
 #include <linux/netfilter/nf_log.h>
+#include <linux/netfilter/nf_ndpi.h>
 #include <netinet/ip_icmp.h>
 #include <netinet/icmp6.h>
 #include <statement.h>
@@ -372,6 +373,100 @@ int log_level_parse(const char *level)
 			return i;
 	}
 	return -1;
+}
+static void ndpi_stmt_print(const struct stmt *stmt, struct output_ctx *octx)
+{
+	const char *cinv = (stmt->ndpi.ndpiflags & NFT_NDPI_FLAG_INVERT) ? "!":"";
+	int i,c,l,t;
+
+	if(stmt->ndpi.ndpiflags & NFT_NDPI_FLAG_ERROR) {
+		nft_print(octx, " %sndpi error", cinv);
+		return;
+	}
+
+	if(stmt->ndpi.ndpiflags & NFT_NDPI_FLAG_INPROGRESS) {
+		nft_print(octx, " %sndpi inprogress ",cinv);
+		for (l = i = 0; i < NDPI_NUM_BITS; i++) {
+			// if (prot_short_str[i] && !prot_disabled[i] && NDPI_COMPARE_PROTOCOL_TO_BITMASK(info->flags, i) != 0)
+			//     printf("%s%s",l++ ? ",":"", prot_short_str[i]);
+		}
+		if(l == 0) {
+			nft_print(octx, " no protos");
+		}
+		return;
+	}
+	if(stmt->ndpi.ndpiflags & NFT_NDPI_FLAG_UNTRACKED) {
+		nft_print(octx, " %sndpi untracked",cinv);
+		return;
+	}
+	if(stmt->ndpi.ndpiflags & NFT_NDPI_FLAG_HAVE_MASTER) {
+		nft_print(octx, " %sndpi have-master",cinv);
+		return;
+	}
+	for (t = c = i = 0; i < NDPI_NUM_BITS; i++) {
+		// if (!prot_short_str[i] || prot_disabled[i] || !strncmp(prot_short_str[i],"badproto_",9)) continue;
+		// t++;
+		// if (NDPI_COMPARE_PROTOCOL_TO_BITMASK(info->flags, i) != 0) c++;
+	}
+	nft_print(octx, " %sndpi", cinv);
+	if((stmt->ndpi.ndpiflags & NFT_NDPI_FLAG_M_PROTO) && !(stmt->ndpi.ndpiflags & NFT_NDPI_FLAG_P_PROTO))
+		nft_print(octx, " match-master");
+	if(!(stmt->ndpi.ndpiflags & NFT_NDPI_FLAG_M_PROTO) && (stmt->ndpi.ndpiflags & NFT_NDPI_FLAG_P_PROTO))
+		nft_print(octx, " match-proto");
+	if (stmt->ndpi.flags & STMT_NDPI_HOSTNAME) {
+		char hostname[NFT_NDPI_HOSTNAME_LEN_MAX] = {};
+		expr_to_string(stmt->ndpi.hostname, hostname);
+		nft_print(octx, " host %s",hostname);
+	}
+	if(!c) return;
+
+	// if( c == t-1 &&
+	//     !NDPI_COMPARE_PROTOCOL_TO_BITMASK(info->flags,NDPI_PROTOCOL_UNKNOWN) ) {
+	// 	printf(" all protocols");
+	// 	return;
+	// }
+	if(stmt->ndpi.ndpiflags & NFT_NDPI_FLAG_JA3S) {
+		nft_print(octx, " ja3s " );
+	} else if(stmt->ndpi.ndpiflags & NFT_NDPI_FLAG_JA3C) {
+		nft_print(octx, " ja3c " );
+	} else if(stmt->ndpi.ndpiflags & NFT_NDPI_FLAG_TLSFP) {
+		nft_print(octx, " tlsfp " );
+	} else if(stmt->ndpi.ndpiflags & NFT_NDPI_FLAG_TLSV) {
+		nft_print(octx, " tlsv " );
+	} else {
+		nft_print(octx, " protocol%s ",c > 1 ? "s":"");
+	}
+	if(c > t/2 + 1) {
+		nft_print(octx, "all");
+		// for (i = 1; i < NDPI_NUM_BITS; i++) {
+		//         if (prot_short_str[i] && !prot_disabled[i] && NDPI_COMPARE_PROTOCOL_TO_BITMASK(info->flags, i) == 0)
+		// 	nft_print(octx, ",-%s", prot_short_str[i]);
+		// }
+		return;
+	}
+
+	for (l = i = 0; i < NDPI_NUM_BITS; i++) {
+	    // if (prot_short_str[i] && !prot_disabled[i] && NDPI_COMPARE_PROTOCOL_TO_BITMASK(info->flags, i) != 0)
+	    //     nft_print(octx, "%s%s",l++ ? ",":"", prot_short_str[i]);
+	}
+}
+
+static void ndpi_stmt_destroy(struct stmt *stmt)
+{
+	expr_free(stmt->ndpi.hostname);
+}
+
+static const struct stmt_ops ndpi_stmt_ops = {
+	.type		= STMT_NDPI,
+	.name		= "ndpi",
+	.print		= ndpi_stmt_print,
+	.json		= ndpi_stmt_json,
+	.destroy	= ndpi_stmt_destroy,
+};
+
+struct stmt *ndpi_stmt_alloc(const struct location *loc)
+{
+	return stmt_alloc(loc, &ndpi_stmt_ops);
 }
 
 static void log_stmt_print(const struct stmt *stmt, struct output_ctx *octx)

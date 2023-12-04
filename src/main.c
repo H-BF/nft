@@ -371,8 +371,9 @@ int main(int argc, char * const *argv)
 	if (getuid() != geteuid())
 		_exit(111);
 
-	if (!nft_options_check(argc, argv))
+	if (!nft_options_check(argc, argv)){
 		exit(EXIT_FAILURE);
+	}
 
 	nft = nft_ctx_new(NFT_CTX_DEFAULT);
 

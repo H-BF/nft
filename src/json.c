@@ -24,6 +24,7 @@
 #include <netinet/ip_icmp.h>
 #include <linux/netfilter.h>
 #include <linux/netfilter/nf_log.h>
+#include <linux/netfilter/nf_ndpi.h>
 #include <linux/netfilter/nf_nat.h>
 #include <linux/netfilter/nf_tables.h>
 #include <linux/netfilter/nf_synproxy.h>
@@ -1369,6 +1370,115 @@ json_t *log_stmt_json(const struct stmt *stmt, struct output_ctx *octx)
 	}
 
 	return json_pack("{s:o}", "log", root);
+}
+
+json_t *ndpi_stmt_json(const struct stmt *stmt, struct output_ctx *octx)
+{
+	json_t *root = json_object(), *flags = json_array();
+	int i,c,l,t;
+
+	if(stmt->ndpi.ndpiflags & NFT_NDPI_FLAG_ERROR) {
+		json_array_append_new(flags, json_string("error"));
+		goto exit;
+	}
+
+	if(stmt->ndpi.ndpiflags & NFT_NDPI_FLAG_INPROGRESS) {
+		json_array_append_new(flags,
+							json_string("inprogress"));
+		for (l = i = 0; i < NDPI_NUM_BITS; i++) {
+			// if (prot_short_str[i] && !prot_disabled[i] && NDPI_COMPARE_PROTOCOL_TO_BITMASK(info->flags, i) != 0)
+			//     printf("%s%s",l++ ? ",":"", prot_short_str[i]);
+		}
+		if(l == 0) {
+			json_array_append_new(flags, json_string("no protos"));
+		}
+		goto exit;
+	}
+
+	if(stmt->ndpi.ndpiflags & NFT_NDPI_FLAG_UNTRACKED) {
+		json_array_append_new(flags, json_string("untracked"));
+		goto exit;
+	}
+
+	if(stmt->ndpi.ndpiflags & NFT_NDPI_FLAG_HAVE_MASTER) {
+		json_array_append_new(flags, json_string("have-master"));
+		goto exit;
+	}
+
+	for (t = c = i = 0; i < NDPI_NUM_BITS; i++) {
+		// if (!prot_short_str[i] || prot_disabled[i] || !strncmp(prot_short_str[i],"badproto_",9)) continue;
+		// t++;
+		// if (NDPI_COMPARE_PROTOCOL_TO_BITMASK(info->flags, i) != 0) c++;
+	}
+
+	if((stmt->ndpi.ndpiflags & NFT_NDPI_FLAG_M_PROTO) && !(stmt->ndpi.ndpiflags & NFT_NDPI_FLAG_P_PROTO))
+		json_array_append_new(flags, json_string("match-master"));
+	if(!(stmt->ndpi.ndpiflags & NFT_NDPI_FLAG_M_PROTO) && (stmt->ndpi.ndpiflags & NFT_NDPI_FLAG_P_PROTO))
+		json_array_append_new(flags, json_string("match-proto"));
+
+	if (stmt->ndpi.flags & STMT_NDPI_HOSTNAME) {
+		char hostname[NFT_NDPI_HOSTNAME_LEN_MAX] = {};
+		expr_to_string(stmt->ndpi.hostname, hostname);
+		json_object_set_new(root, "host", json_string(hostname));
+	}
+	if(!c) goto exit;
+
+	if (stmt->ndpi.flags & STMT_NDPI_FLAGS_PROTO) {
+		json_t *protos = json_array();
+		// if( c == t-1 &&
+		//     !NDPI_COMPARE_PROTOCOL_TO_BITMASK(info->flags,NDPI_PROTOCOL_UNKNOWN) ) {
+		// 	printf(" all protocols");
+		// 	return;
+		// }
+
+		if(stmt->ndpi.ndpiflags & NFT_NDPI_FLAG_JA3S) {
+			json_array_append_new(protos, json_string("ja3s"));
+		} else if(stmt->ndpi.ndpiflags & NFT_NDPI_FLAG_JA3C) {
+			json_array_append_new(protos, json_string("ja3c"));
+		} else if(stmt->ndpi.ndpiflags & NFT_NDPI_FLAG_TLSFP) {
+			json_array_append_new(protos, json_string("tlsfp"));
+		} else if(stmt->ndpi.ndpiflags & NFT_NDPI_FLAG_TLSV) {
+			json_array_append_new(protos, json_string("tlsv"));
+		}
+		if(c > t/2 + 1) {
+			json_array_append_new(protos, json_string("all"));
+			// for (i = 1; i < NDPI_NUM_BITS; i++) {
+			//         if (prot_short_str[i] && !prot_disabled[i] && NDPI_COMPARE_PROTOCOL_TO_BITMASK(info->flags, i) == 0)
+			// 	nft_print(octx, ",-%s", prot_short_str[i]);
+			// }
+			goto exit;
+		}
+
+		for (l = i = 0; i < NDPI_NUM_BITS; i++) {
+		    // if (prot_short_str[i] && !prot_disabled[i] && NDPI_COMPARE_PROTOCOL_TO_BITMASK(info->flags, i) != 0)
+		    //     nft_print(octx, "%s%s",l++ ? ",":"", prot_short_str[i]);
+		}
+		if (json_array_size(protos) > 1) {
+			json_object_set_new(root, "protocols", protos);
+		} else {
+			if (json_array_size(protos))
+				json_object_set(root, "protocols",
+					json_array_get(protos, 0));
+			json_decref(protos);
+		}
+	}
+
+exit:
+	if (json_array_size(flags) > 1) {
+		json_object_set_new(root, "flags", flags);
+	} else {
+		if (json_array_size(flags))
+			json_object_set(root, "flags",
+					json_array_get(flags, 0));
+		json_decref(flags);
+	}
+
+	if (!json_object_size(root)) {
+		json_decref(root);
+		root = json_null();
+	}
+
+	return json_pack("{s:o}", "ndpi", root);
 }
 
 static json_t *nat_flags_json(uint32_t flags)

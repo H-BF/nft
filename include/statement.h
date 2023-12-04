@@ -82,6 +82,21 @@ extern struct stmt *meta_stmt_alloc(const struct location *loc,
 				    struct expr *expr);
 
 enum {
+	STMT_NDPI_FLAGS			= (1 << 0),
+	STMT_NDPI_HOSTNAME		= (1 << 1),
+	STMT_NDPI_FLAGS_ALL		= (1 << 2),
+	STMT_NDPI_FLAGS_PROTO	= (1 << 3),
+};
+
+struct ndpi_stmt {
+	struct expr		*hostname;
+	uint16_t		ndpiflags;
+	uint32_t		flags;
+};
+
+extern struct stmt *ndpi_stmt_alloc(const struct location *loc);
+
+enum {
 	STMT_LOG_PREFIX		= (1 << 0),
 	STMT_LOG_SNAPLEN	= (1 << 1),
 	STMT_LOG_GROUP		= (1 << 2),
@@ -292,6 +307,7 @@ extern struct stmt *xt_stmt_alloc(const struct location *loc);
  * @STMT_META:		meta statement
  * @STMT_LIMIT:		limit statement
  * @STMT_LOG:		log statement
+ * @STMT_NDPI:		ndpi statement
  * @STMT_REJECT:	REJECT statement
  * @STMT_NAT:		NAT statement
  * @STMT_QUEUE:		QUEUE statement
@@ -321,6 +337,7 @@ enum stmt_types {
 	STMT_PAYLOAD,
 	STMT_META,
 	STMT_LIMIT,
+	STMT_NDPI,
 	STMT_LOG,
 	STMT_REJECT,
 	STMT_NAT,
@@ -392,6 +409,7 @@ struct stmt {
 		struct payload_stmt	payload;
 		struct meta_stmt	meta;
 		struct last_stmt	last;
+		struct ndpi_stmt	ndpi;
 		struct log_stmt		log;
 		struct limit_stmt	limit;
 		struct reject_stmt	reject;

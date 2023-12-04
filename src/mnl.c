@@ -394,7 +394,7 @@ int mnl_batch_talk(struct netlink_ctx *ctx, struct list_head *err_list,
 		   uint32_t num_cmds)
 {
 	struct mnl_socket *nl = ctx->nft->nf_sock;
-	int ret, fd = mnl_socket_get_fd(nl), portid = mnl_socket_get_portid(nl);
+	int ret, fd = mnl_socket_get_fd(nl), portid = mnl_socket_get_portid(nl);	
 	uint32_t iov_len = nftnl_batch_iovec_len(ctx->batch);
 	char rcv_buf[NFT_MNL_ACK_MAXSIZE];
 	const struct sockaddr_nl snl = {
@@ -438,15 +438,18 @@ int mnl_batch_talk(struct netlink_ctx *ctx, struct list_head *err_list,
 		FD_SET(fd, &readfds);
 
 		ret = select(fd + 1, &readfds, NULL, NULL, &tv);
-		if (ret == -1)
+		if (ret == -1){
 			return -1;
+		}
 
-		if (!FD_ISSET(fd, &readfds))
+		if (!FD_ISSET(fd, &readfds)){
 			break;
+		}
 
 		ret = mnl_socket_recvfrom(nl, rcv_buf, sizeof(rcv_buf));
-		if (ret == -1)
+		if (ret == -1){
 			return -1;
+		}
 
 		/* Continue on error, make sure we get all acknowledgments */
 		ret = mnl_cb_run2(rcv_buf, ret, 0, portid,
