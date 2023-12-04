@@ -13,6 +13,7 @@
 
 #include <linux/netfilter/nf_tables.h>
 #include <linux/netfilter/nf_log.h>
+#include <linux/netfilter/nf_ndpi.h>
 
 #include <rule.h>
 #include <statement.h>
@@ -1135,6 +1136,26 @@ static void netlink_gen_meta_stmt(struct netlink_linearize_ctx *ctx,
 	nft_rule_add_expr(ctx, nle, &stmt->location);
 }
 
+static void netlink_gen_ndpi_stmt(struct netlink_linearize_ctx *ctx,
+				 const struct stmt *stmt)
+{
+	struct nftnl_expr *nle;
+
+	nle = alloc_nft_expr("ndpi");
+	if (stmt->ndpi.hostname != NULL) {
+		char hostname[NFT_NDPI_HOSTNAME_LEN_MAX] = {};
+
+		expr_to_string(stmt->ndpi.hostname, hostname);
+		nftnl_expr_set_str(nle, NFTNL_EXPR_NDPI_HOSTNAME, hostname);
+	}
+
+	if (stmt->ndpi.ndpiflags)
+		nftnl_expr_set_u16(nle, NFTNL_EXPR_NDPI_FLAGS,
+				   stmt->ndpi.ndpiflags);
+
+	nft_rule_add_expr(ctx, nle, &stmt->location);
+}
+
 static void netlink_gen_log_stmt(struct netlink_linearize_ctx *ctx,
 				 const struct stmt *stmt)
 {
@@ -1677,6 +1698,8 @@ static void netlink_gen_stmt(struct netlink_linearize_ctx *ctx,
 		return netlink_gen_payload_stmt(ctx, stmt);
 	case STMT_META:
 		return netlink_gen_meta_stmt(ctx, stmt);
+	case STMT_NDPI:
+		return netlink_gen_ndpi_stmt(ctx, stmt);
 	case STMT_LOG:
 		return netlink_gen_log_stmt(ctx, stmt);
 	case STMT_REJECT:

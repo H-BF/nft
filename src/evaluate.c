@@ -19,6 +19,7 @@
 #include <linux/netfilter/nf_synproxy.h>
 #include <linux/netfilter/nf_nat.h>
 #include <linux/netfilter/nf_log.h>
+#include <linux/netfilter/nf_ndpi.h>
 #include <linux/netfilter_ipv4.h>
 #include <netinet/ip_icmp.h>
 #include <netinet/icmp6.h>
@@ -4181,6 +4182,103 @@ static int stmt_evaluate_queue(struct eval_ctx *ctx, struct stmt *stmt)
 	return 0;
 }
 
+static int stmt_evaluate_ndpi_hostname(struct eval_ctx *ctx, struct stmt *stmt)
+{
+	char tmp[NFT_NDPI_HOSTNAME_LEN_MAX] = {};
+	char hostname[NFT_NDPI_HOSTNAME_LEN_MAX];
+	size_t len = sizeof(hostname);
+	size_t offset = 0;
+	struct expr *expr;
+
+	if (stmt->ndpi.hostname->etype != EXPR_LIST) {
+		if (stmt->ndpi.hostname &&
+		    div_round_up(stmt->ndpi.hostname->len, BITS_PER_BYTE) >= NFT_NDPI_HOSTNAME_LEN_MAX)
+			return expr_error(ctx->msgs, stmt->ndpi.hostname, "ndpi: hostname is too long");
+
+		return 0;
+	}
+
+	hostname[0] = '\0';
+
+	list_for_each_entry(expr, &stmt->ndpi.hostname->expressions, list) {
+		int ret;
+
+		switch (expr->etype) {
+		case EXPR_VALUE:
+			expr_to_string(expr, tmp);
+			ret = snprintf(hostname + offset, len, "%s", tmp);
+			break;
+		case EXPR_VARIABLE:
+			ret = snprintf(hostname + offset, len, "%s",
+				       expr->sym->expr->identifier);
+			break;
+		default:
+			BUG("unknown expression type %s\n", expr_name(expr));
+			break;
+		}
+		SNPRINTF_BUFFER_SIZE(ret, &len, &offset);
+	}
+
+	if (len == 0)
+		return stmt_error(ctx, stmt, "ndpi: hostname is too long");
+
+	expr = constant_expr_alloc(&stmt->ndpi.hostname->location, &string_type,
+				   BYTEORDER_HOST_ENDIAN,
+				   strlen(hostname) * BITS_PER_BYTE, hostname);
+	expr_free(stmt->ndpi.hostname);
+	stmt->ndpi.hostname = expr;
+
+	return 0;
+}
+
+static int stmt_evaluate_ndpi(struct eval_ctx *ctx, struct stmt *stmt)
+{
+	int ret = 0;
+
+	if (!stmt->ndpi.ndpiflags)
+		return stmt_error(ctx, stmt, "ndpi: missing options.");
+
+	if (stmt->ndpi.ndpiflags & NFT_NDPI_FLAG_ERROR) {
+		if (stmt->ndpi.ndpiflags != NFT_NDPI_FLAG_ERROR)
+			return stmt_error(ctx, stmt, "ndpi: cant use '--error' with other options");
+		else
+			goto end;
+	}
+	if (stmt->ndpi.ndpiflags & NFT_NDPI_FLAG_UNTRACKED) {
+		if (stmt->ndpi.ndpiflags != NFT_NDPI_FLAG_UNTRACKED)
+			return stmt_error(ctx, stmt, "ndpi: cant use '--untracked' with other options");
+		else
+			goto end;
+	}
+	if (stmt->ndpi.ndpiflags & NFT_NDPI_FLAG_HAVE_MASTER) {
+		if((stmt->ndpi.ndpiflags & (NFT_NDPI_FLAG_M_PROTO | NFT_NDPI_FLAG_P_PROTO)) && (stmt->ndpi.flags & STMT_NDPI_FLAGS_ALL))
+			return stmt_error(ctx, stmt, "ndpi: cant use '--have-master' with options match-master,match-proto,proto");
+	    else
+			goto end;
+	}
+	if (stmt->ndpi.ndpiflags & NFT_NDPI_FLAG_INPROGRESS) {
+		if((stmt->ndpi.ndpiflags & (NFT_NDPI_FLAG_M_PROTO | NFT_NDPI_FLAG_P_PROTO)) && (stmt->ndpi.flags & STMT_NDPI_FLAGS_ALL))
+			return stmt_error(ctx, stmt, "ndpi: cant use '--inprogress' with options match-master,match-proto,proto");
+	    else
+			goto end;
+	}
+
+	if (stmt->ndpi.ndpiflags & (NFT_NDPI_FLAG_P_PROTO | NFT_NDPI_FLAG_M_PROTO | NFT_NDPI_FLAG_INPROGRESS)) {
+		if(!(stmt->ndpi.flags & STMT_NDPI_FLAGS_ALL))
+			return stmt_error(ctx, stmt, "ndpi: You need to specify at least one protocol");
+	}
+
+	if (stmt->ndpi.ndpiflags & (NFT_NDPI_FLAG_JA3S | NFT_NDPI_FLAG_JA3C | NFT_NDPI_FLAG_TLSFP | NFT_NDPI_FLAG_TLSV)) {
+		if(!(stmt->ndpi.flags & STMT_NDPI_FLAGS_PROTO))
+			return stmt_error(ctx, stmt, "ndpi: You need to specify at least one protocol");
+	}
+
+end:
+	if (stmt->ndpi.hostname)
+		ret = stmt_evaluate_ndpi_hostname(ctx, stmt);
+	return ret;
+}
+
 static int stmt_evaluate_log_prefix(struct eval_ctx *ctx, struct stmt *stmt)
 {
 	char tmp[NF_LOG_PREFIXLEN] = {};
@@ -4453,7 +4551,6 @@ int stmt_evaluate(struct eval_ctx *ctx, struct stmt *stmt)
 		nft_print(&ctx->nft->output, "\n\n");
 		erec_destroy(erec);
 	}
-
 	switch (stmt->ops->type) {
 	case STMT_CONNLIMIT:
 	case STMT_COUNTER:
@@ -4477,6 +4574,8 @@ int stmt_evaluate(struct eval_ctx *ctx, struct stmt *stmt)
 		return stmt_evaluate_meta(ctx, stmt);
 	case STMT_CT:
 		return stmt_evaluate_ct(ctx, stmt);
+	case STMT_NDPI:
+		return stmt_evaluate_ndpi(ctx, stmt);
 	case STMT_LOG:
 		return stmt_evaluate_log(ctx, stmt);
 	case STMT_REJECT:
@@ -4993,8 +5092,9 @@ static int rule_evaluate(struct eval_ctx *ctx, struct rule *rule,
 						 "statement has no effect");
 
 		ctx->stmt = stmt;
-		if (stmt_evaluate(ctx, stmt) < 0)
+		if (stmt_evaluate(ctx, stmt) < 0){
 			return -1;
+		}
 		if (stmt->flags & STMT_F_TERMINAL)
 			tstmt = stmt;
 

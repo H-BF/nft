@@ -25,6 +25,7 @@
 #include <linux/netfilter/nf_conntrack_tuple_common.h>
 #include <linux/netfilter/nf_nat.h>
 #include <linux/netfilter/nf_log.h>
+#include <linux/netfilter/nf_ndpi.h>
 #include <linux/netfilter/nfnetlink_osf.h>
 #include <linux/netfilter/nf_synproxy.h>
 #include <linux/xfrm.h>
@@ -599,6 +600,9 @@ int nft_lex(void *, void *, void *);
 %token QUEUE_THRESHOLD		"queue-threshold"
 %token LEVEL			"level"
 
+%token NDPI			"ndpi"
+%token HOSTNAME		"host"
+
 %token LIMIT			"limit"
 %token RATE			"rate"
 %token BURST			"burst"
@@ -750,6 +754,8 @@ int nft_lex(void *, void *, void *);
 %destructor { stmt_free($$); }	ct_stmt
 %type <stmt>			meta_stmt
 %destructor { stmt_free($$); }	meta_stmt
+%type <stmt>			ndpi_stmt ndpi_stmt_alloc
+%destructor { stmt_free($$); }	ndpi_stmt ndpi_stmt_alloc
 %type <stmt>			log_stmt log_stmt_alloc
 %destructor { stmt_free($$); }	log_stmt log_stmt_alloc
 %type <val>			level_type log_flags log_flags_tcp log_flag_tcp
@@ -1046,6 +1052,7 @@ close_scope_th		: { scanner_pop_start_cond(nft->scanner, PARSER_SC_EXPR_TH); };
 close_scope_udp		: { scanner_pop_start_cond(nft->scanner, PARSER_SC_EXPR_UDP); };
 close_scope_udplite	: { scanner_pop_start_cond(nft->scanner, PARSER_SC_EXPR_UDPLITE); };
 
+close_scope_ndpi		: { scanner_pop_start_cond(nft->scanner, PARSER_SC_STMT_NDPI); }
 close_scope_log		: { scanner_pop_start_cond(nft->scanner, PARSER_SC_STMT_LOG); }
 close_scope_synproxy	: { scanner_pop_start_cond(nft->scanner, PARSER_SC_STMT_SYNPROXY); }
 close_scope_xt		: { scanner_pop_start_cond(nft->scanner, PARSER_SC_XT); }
@@ -3064,6 +3071,7 @@ stmt			:	verdict_stmt
 			|	payload_stmt
 			|	stateful_stmt
 			|	meta_stmt
+			|	ndpi_stmt	close_scope_ndpi
 			|	log_stmt	close_scope_log
 			|	reject_stmt	close_scope_reject
 			|	nat_stmt	close_scope_nat
@@ -3209,6 +3217,155 @@ last_stmt		:	LAST
 				$$->last.set = true;
 			}
 			;
+
+ndpi_stmt	:	ndpi_stmt_alloc
+			|	ndpi_stmt_alloc		ndpi_args
+			;
+
+ndpi_stmt_alloc		:	NDPI
+			{
+				$$ = ndpi_stmt_alloc(&@$);
+			}
+			;
+
+ndpi_args	:	ndpi_arg
+			{
+				$<stmt>$	= $<stmt>0;
+			}
+			|	ndpi_args	ndpi_arg
+			;
+
+ndpi_arg	:	HOSTNAME		string
+			{
+				struct scope *scope = current_scope(state);
+				bool done = false, another_var = false;
+				char *start, *end, scratch = '\0';
+				struct expr *expr, *item;
+				struct symbol *sym;
+				enum {
+					PARSE_TEXT,
+					PARSE_VAR,
+				} prefix_state;
+
+				/* No variables in ndpi hostname, skip. */
+				if (!strchr($2, '$')) {
+					expr = constant_expr_alloc(&@$, &string_type,
+								   BYTEORDER_HOST_ENDIAN,
+								   (strlen($2) + 1) * BITS_PER_BYTE, $2);
+					free_const($2);
+					$<stmt>0->ndpi.hostname = expr;
+					$<stmt>0->ndpi.flags |= STMT_NDPI_HOSTNAME;
+					$<stmt>0->ndpi.flags |= STMT_NDPI_FLAGS;
+					$<stmt>0->ndpi.ndpiflags |= NFT_NDPI_FLAG_HOST;
+					break;
+				}
+
+				/* Parse variables in ndpi hostname string using a
+				 * state machine parser with two states. This
+				 * parser creates list of expressions composed
+				 * of constant and variable expressions.
+				 */
+				expr = compound_expr_alloc(&@$, EXPR_LIST);
+
+				start = (char *)$2;
+
+				if (*start != '$') {
+					prefix_state = PARSE_TEXT;
+				} else {
+					prefix_state = PARSE_VAR;
+					start++;
+				}
+				end = start;
+
+				/* Not nice, but works. */
+				while (!done) {
+					switch (prefix_state) {
+					case PARSE_TEXT:
+						while (*end != '\0' && *end != '$')
+							end++;
+
+						if (*end == '\0')
+							done = true;
+
+						*end = '\0';
+						item = constant_expr_alloc(&@$, &string_type,
+									   BYTEORDER_HOST_ENDIAN,
+									   (strlen(start) + 1) * BITS_PER_BYTE,
+									   start);
+						compound_expr_add(expr, item);
+
+						if (done)
+							break;
+
+						start = end + 1;
+						end = start;
+
+						/* fall through */
+					case PARSE_VAR:
+						while (isalnum(*end) || *end == '_')
+							end++;
+
+						if (*end == '\0')
+							done = true;
+						else if (*end == '$')
+							another_var = true;
+						else
+							scratch = *end;
+
+						*end = '\0';
+
+						sym = symbol_get(scope, start);
+						if (!sym) {
+							sym = symbol_lookup_fuzzy(scope, start);
+							if (sym) {
+								erec_queue(error(&@2, "unknown identifier '%s'; "
+										 "did you mean identifier ‘%s’?",
+										 start, sym->identifier),
+									   state->msgs);
+							} else {
+								erec_queue(error(&@2, "unknown identifier '%s'",
+										 start),
+									   state->msgs);
+							}
+							expr_free(expr);
+							free_const($2);
+							YYERROR;
+						}
+						item = variable_expr_alloc(&@$, scope, sym);
+						compound_expr_add(expr, item);
+
+						if (done)
+							break;
+
+						/* Restore original byte after
+						 * symbol lookup.
+						 */
+						if (scratch) {
+							*end = scratch;
+							scratch = '\0';
+						}
+
+						start = end;
+						if (another_var) {
+							another_var = false;
+							start++;
+							prefix_state = PARSE_VAR;
+						} else {
+							prefix_state = PARSE_TEXT;
+						}
+						end = start;
+						break;
+					}
+				}
+
+				free_const($2);
+				$<stmt>0->ndpi.hostname	 = expr;
+				$<stmt>0->ndpi.flags 	|= STMT_NDPI_HOSTNAME;
+				$<stmt>0->ndpi.flags 	|= STMT_NDPI_FLAGS;
+				$<stmt>0->ndpi.ndpiflags |= NFT_NDPI_FLAG_HOST;
+			}
+			;
+
 
 log_stmt		:	log_stmt_alloc
 			|	log_stmt_alloc		log_args
