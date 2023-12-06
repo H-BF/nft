@@ -1,0 +1,9 @@
+Package: nft
+Version: 1.0.9
+Architecture: all
+Maintainer: mat3x@mail.ru
+Installed-Size: 4892
+Depends: libmnl-dev, flex, bison, libgmp-dev, libedit-dev, libjansson-dev
+Section: misc
+Priority: optional
+Description: nftables command line utility that support ndpi.
