@@ -12,6 +12,7 @@ function clean() {
 }
 
 function configure() {
+  export PKG_CONFIG_PATH=$PKG_CONFIG_PATH:/opt/hbf/lib/pkgconfig/
   ./autogen.sh
   ./configure --prefix=$INSTALL_DIR --program-prefix=$PRG_PREFIX --with-json
 }
