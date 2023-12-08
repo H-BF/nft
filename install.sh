@@ -1,7 +1,5 @@
 #!/bin/bash
 
-PRG_PREFIX := hbf
-
 PKG_DIR=$(pwd)/packages/deb
 INSTALL_DIR=$PKG_DIR/debian/opt/hbf/
 
@@ -14,7 +12,7 @@ function clean() {
 function configure() {
   export PKG_CONFIG_PATH=$PKG_CONFIG_PATH:/opt/hbf/lib/pkgconfig/
   ./autogen.sh
-  ./configure --prefix=$INSTALL_DIR --program-prefix=$PRG_PREFIX --with-json
+  ./configure --prefix=$INSTALL_DIR --with-pkgdst=/opt/hbf --with-json
 }
 
 function build() {
