@@ -114,6 +114,9 @@ AC_CHECK_DECLS([getprotobyname_r, getprotobynumber_r, getservbyport_r], [], [], 
 #include <netdb.h>
 ]])
 
+AC_ARG_WITH([pkgdst], [AS_HELP_STRING([--with-pkgdst=DIR], [Where the deb package will be installed. By default DIR=prefix])], [pkgdst=$withval], [pkgdst=$prefix])
+AC_SUBST([pkgdst])
+
 AC_CONFIG_FILES([					\
 		Makefile				\
 		libnftables.pc				\
