@@ -28,19 +28,17 @@ build-deb:
     - git submodule set-branch --branch develop libnftnl
     - git submodule sync libnftnl 
     - apt install -y asciidoc
-    - cd libnftnl && git branch
+    - cd libnftnl && git checkout develop
     - ./autogen.sh
-    - ./configure
     - make
     - sudo make install
+    - ./configure
     - cd ..
     - ./install.sh
     - mv ./packages/deb/hbf-nft-${STRIPPED_VERSION}-any.deb .
   artifacts:
     paths:
       - "*.deb"
-  variables:
-    GIT_SUBMODULE_STRATEGY: recursive
 
 push:
   stage: push-deb
