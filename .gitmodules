@@ -1,4 +1,4 @@
 [submodule "libnftnl"]
 	path = libnftnl
-	url = https://gitlab-internal.wildberries.ru/swarm/system/nftables/libnftnl.git
+	url = @gitlab-internal.wildberries.ru:swarm/system/nftables/libnftnl.git
 	branch = develop
