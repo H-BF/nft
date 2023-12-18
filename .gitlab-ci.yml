@@ -27,13 +27,13 @@ build-deb:
     - git submodule add -f git@gitlab-internal.wildberries.ru:swarm/system/nftables/libnftnl.git
     - git submodule set-branch --branch develop libnftnl
     - git submodule sync libnftnl 
-    - cd libnftnl
+    - apt install -y asciidoc
+    - cd libnftnl && git branch
     - ./autogen.sh
     - ./configure
     - make
     - sudo make install
     - cd ..
-    - apt install -y asciidoc
     - ./install.sh
     - mv ./packages/deb/hbf-nft-${STRIPPED_VERSION}-any.deb .
   artifacts:
