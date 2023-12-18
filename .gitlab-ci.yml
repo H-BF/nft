@@ -36,8 +36,6 @@ build-deb:
   artifacts:
     paths:
       - "*.deb"
-  variables:
-    GIT_SUBMODULE_STRATEGY: normal
 
 push:
   stage: push-deb
