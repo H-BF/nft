@@ -24,22 +24,22 @@ build-deb:
   stage: build-deb
   extends: .template_default
   script:
-    - git submodule add -f git@gitlab-internal.wildberries.ru:swarm/system/nftables/libnftnl.git
     - git submodule set-branch --branch develop libnftnl
-    - git submodule update --force --recursive --init --remote
-    - git submodule update --remote --merge
-    - apt install -y asciidoc
-    - cd libnftnl && git branch
+    - cd libnftnl
     - ./autogen.sh
+    - ./configure
     - make
     - sudo make install
-    - ./configure
     - cd ..
+    - apt install -y asciidoc
     - ./install.sh
     - mv ./packages/deb/hbf-nft-${STRIPPED_VERSION}-any.deb .
   artifacts:
     paths:
       - "*.deb"
+  variables:
+    GIT_SUBMODULE_STRATEGY: recursive
+    GIT_SUBMODULE_FORCE_HTTPS: "true"
 
 push:
   stage: push-deb
