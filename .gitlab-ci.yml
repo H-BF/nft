@@ -7,7 +7,7 @@ stages:
   - push-deb
 
 .template_default:
-  image: harbor.wildberries.ru/swarm/swarm/swarmops/docker-factory/deb-builder:feature-swarm-235-360356a8
+  image: harbor.wildberries.ru/swarm/swarm/swarmops/docker-factory/deb-builder:feature-swarm-235-65bcf997
   before_script:
   - export STRIPPED_VERSION="${VERSION#v}"
   rules:
@@ -24,14 +24,20 @@ build-deb:
   stage: build-deb
   extends: .template_default
   script:
-    - echo "deb http://swarm-nexus-ingress-controller.swarm-nexus.svc.k8s.prod-dl/repository/swarm-apt-hosted/ bionic main" >> /etc/apt/sources.list
-    - apt update 
-    - apt install -y asciidoc tree libnftnl
+    - cd libnftnl
+    - ./autogen.sh
+    - ./configure
+    - make
+    - sudo make install
+    - cd ..
+    - apt install -y asciidoc
     - ./install.sh
     - mv ./packages/deb/hbf-nft-${STRIPPED_VERSION}-any.deb .
   artifacts:
     paths:
       - "*.deb"
+  variables:
+    GIT_SUBMODULE_STRATEGY: recursive
 
 push:
   stage: push-deb
