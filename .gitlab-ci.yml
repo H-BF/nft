@@ -30,7 +30,7 @@ build-deb:
     - git submodule sync --recursive
     - git submodule update --init --recursive
     - cd libnftnl && git branch
-    - apt install -y asciidoc
+    - apt install -y asciidoc libmnl-dev flex
     - ./autogen.sh
     - ./configure
     - make
