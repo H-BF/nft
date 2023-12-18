@@ -10,6 +10,7 @@ stages:
   image: harbor.wildberries.ru/swarm/swarm/swarmops/docker-factory/deb-builder:feature-swarm-235-65bcf997
   before_script:
   - export STRIPPED_VERSION="${VERSION#v}"
+  - apt install -y openssh-client
   rules:
     - if: $CI_COMMIT_BRANCH =~ /^feature-.*$/ || $CI_COMMIT_BRANCH =~ /^dev$/
       variables:
