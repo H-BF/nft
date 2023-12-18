@@ -2,6 +2,9 @@ variables:
   NEXUS_URL:      "http://swarm-nexus-ingress-controller.swarm-nexus.svc.k8s.prod-dl/repository"
   NEXUS_REPO:     "swarm-apt-hosted"
 
+  GIT_SUBMODULE_STRATEGY: recursive
+  GIT_STRATEGY: clone
+
 stages:
   - build-deb
   - push-deb
@@ -9,11 +12,12 @@ stages:
 .template_default:
   image: harbor.wildberries.ru/swarm/swarm/swarmops/docker-factory/deb-builder:feature-swarm-235-65bcf997
   before_script:
-  - export STRIPPED_VERSION="${VERSION#v}"
+    - export STRIPPED_VERSION="${VERSION#v}"
   rules:
     - if: $CI_COMMIT_BRANCH =~ /^feature-.*$/ || $CI_COMMIT_BRANCH =~ /^dev$/
       variables:
         VERSION: 0-$CI_COMMIT_BRANCH-$CI_COMMIT_SHORT_SHA
+        
     - if: "$CI_COMMIT_TAG =~ /^v([0-9]+)\\.([0-9]+)\\.([0-9]+)-?([a-zA-Z0-9\\.]*)\\+?([a-zA-Z0-9\\.]*)$/"
       variables:
         VERSION: $CI_COMMIT_TAG-$CI_COMMIT_SHORT_SHA
@@ -24,17 +28,12 @@ build-deb:
   stage: build-deb
   extends: .template_default
   script:
-    - echo "https://${CI_REGISTRY_USER}:${CI_JOB_TOKEN}gitlab-internal.wildberries.ru" > ~/.git-credentials
-    - git submodule add -f https://gitlab-internal.wildberries.ru/swarm/system/nftables/libnftnl.git
-    - git submodule set-branch --branch develop libnftnl
-    - git submodule sync --recursive
-    - git submodule update --init --recursive
-    - cd libnftnl && git branch
-    - apt install -y asciidoc libmnl-dev flex
+    - apt install -y asciidoc
+    - cd libnftnl 
     - ./autogen.sh
     - ./configure
     - make
-    - sudo make install
+    - make install
     - cd ..
     - ./install.sh
     - mv ./packages/deb/hbf-nft-${STRIPPED_VERSION}-any.deb .
