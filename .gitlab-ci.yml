@@ -26,7 +26,7 @@ build-deb:
   script:
     - git submodule add -f git@gitlab-internal.wildberries.ru:swarm/system/nftables/libnftnl.git
     - git submodule set-branch --branch develop libnftnl
-    - git submodule update --recursive --remote
+    - git submodule update --force --recursive --init --remote
     - apt install -y asciidoc
     - cd libnftnl && git branch
     - ./autogen.sh
