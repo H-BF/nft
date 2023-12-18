@@ -37,7 +37,7 @@ build-deb:
     paths:
       - "*.deb"
   variables:
-    GIT_SUBMODULE_STRATEGY: recursive
+    GIT_SUBMODULE_STRATEGY: normal
 
 push:
   stage: push-deb
