@@ -1,4 +1,4 @@
 [submodule "libnftnl"]
 	path = libnftnl
-	url = git@gitlab-internal.wildberries.ru:swarm/system/nftables/libnftnl.git
+	url = nabiev.a5git config --global status.submoduleSummary true@gitlab-internal.wildberries.ru:swarm/system/nftables/libnftnl.git
 	branch = develop
