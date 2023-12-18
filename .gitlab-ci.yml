@@ -38,7 +38,7 @@ build-deb:
       - "*.deb"
   variables:
     GIT_SUBMODULE_STRATEGY: recursive
-    GIT_SUBMODULE_FORCE_HTTPS: "true"
+
 push:
   stage: push-deb
   extends: .template_default
