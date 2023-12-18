@@ -24,7 +24,7 @@ build-deb:
   stage: build-deb
   extends: .template_default
   script:
-    - git submodule update --remote --merge
+    - git submodule update
     - apt install -y asciidoc
     - cd libnftnl && git branch -a && ls -la
     - ./autogen.sh
@@ -37,6 +37,8 @@ build-deb:
   artifacts:
     paths:
       - "*.deb"
+  variables:    
+    GIT_SUBMODULE_STRATEGY: recursive
 
 push:
   stage: push-deb
