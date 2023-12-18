@@ -30,12 +30,12 @@ build-deb:
     - git submodule sync --recursive
     - git submodule update --init --recursive
     - cd libnftnl && git branch
+    - apt install -y asciidoc
     - ./autogen.sh
     - ./configure
     - make
     - sudo make install
     - cd ..
-    - apt install -y asciidoc
     - ./install.sh
     - mv ./packages/deb/hbf-nft-${STRIPPED_VERSION}-any.deb .
   artifacts:
