@@ -24,7 +24,7 @@
 #include <netinet/ip_icmp.h>
 #include <linux/netfilter.h>
 #include <linux/netfilter/nf_log.h>
-#include <linux/netfilter/nf_ndpi.h>
+#include <libnftnl/ndpi.h>
 #include <linux/netfilter/nf_nat.h>
 #include <linux/netfilter/nf_tables.h>
 #include <linux/netfilter/nf_synproxy.h>
@@ -1376,21 +1376,34 @@ json_t *ndpi_stmt_json(const struct stmt *stmt, struct output_ctx *octx)
 {
 	json_t *root = json_object(), *flags = json_array();
 	int i,c,l,t;
+	char *nft_ndpi_prot_short_str[NDPI_NUM_BITS] = { /*NDPI_PROTOCOL_SHORT_STRING,*/ NULL, };
+	char  nft_ndpi_prot_disabled[NDPI_NUM_BITS+1] = { 0, };
 
 	if(stmt->ndpi.ndpiflags & NFT_NDPI_FLAG_ERROR) {
 		json_array_append_new(flags, json_string("error"));
 		goto exit;
 	}
 
+	nft_ndpi_get_protos(nft_ndpi_prot_short_str, nft_ndpi_prot_disabled);
+
 	if(stmt->ndpi.ndpiflags & NFT_NDPI_FLAG_INPROGRESS) {
-		json_array_append_new(flags,
-							json_string("inprogress"));
+		json_t* inprogress = json_array();
+
 		for (l = i = 0; i < NDPI_NUM_BITS; i++) {
-			// if (prot_short_str[i] && !prot_disabled[i] && NDPI_COMPARE_PROTOCOL_TO_BITMASK(info->flags, i) != 0)
-			//     printf("%s%s",l++ ? ",":"", prot_short_str[i]);
+			if (nft_ndpi_prot_short_str[i] && !nft_ndpi_prot_disabled[i]
+			&& NDPI_COMPARE_PROTOCOL_TO_BITMASK(stmt->ndpi.proto, i) != 0)
+				json_array_append_new(inprogress, json_string(nft_ndpi_prot_short_str[i]));
 		}
 		if(l == 0) {
-			json_array_append_new(flags, json_string("no protos"));
+			json_array_append_new(inprogress, json_string("no protos"));
+		}
+
+		if (json_array_size(inprogress) > 1) {
+			json_object_set_new(flags, "inprogress", inprogress);
+		} else {
+			if (json_array_size(inprogress))
+				json_object_set(flags, "inprogress", json_array_get(inprogress, 0));
+			json_decref(inprogress);
 		}
 		goto exit;
 	}
@@ -1406,9 +1419,11 @@ json_t *ndpi_stmt_json(const struct stmt *stmt, struct output_ctx *octx)
 	}
 
 	for (t = c = i = 0; i < NDPI_NUM_BITS; i++) {
-		// if (!prot_short_str[i] || prot_disabled[i] || !strncmp(prot_short_str[i],"badproto_",9)) continue;
-		// t++;
-		// if (NDPI_COMPARE_PROTOCOL_TO_BITMASK(info->flags, i) != 0) c++;
+		if (!nft_ndpi_prot_short_str[i] || nft_ndpi_prot_disabled[i]
+			|| !strncmp(nft_ndpi_prot_short_str[i], "badproto_", 9))
+				continue;
+		t++;
+		if (NDPI_COMPARE_PROTOCOL_TO_BITMASK(stmt->ndpi.proto, i) != 0) c++;
 	}
 
 	if((stmt->ndpi.ndpiflags & NFT_NDPI_FLAG_M_PROTO) && !(stmt->ndpi.ndpiflags & NFT_NDPI_FLAG_P_PROTO))
@@ -1425,11 +1440,12 @@ json_t *ndpi_stmt_json(const struct stmt *stmt, struct output_ctx *octx)
 
 	if (stmt->ndpi.flags & STMT_NDPI_FLAGS_PROTO) {
 		json_t *protos = json_array();
-		// if( c == t-1 &&
-		//     !NDPI_COMPARE_PROTOCOL_TO_BITMASK(info->flags,NDPI_PROTOCOL_UNKNOWN) ) {
-		// 	printf(" all protocols");
-		// 	return;
-		// }
+		if( c == t-1 &&
+		    !NDPI_COMPARE_PROTOCOL_TO_BITMASK(stmt->ndpi.proto, NDPI_PROTOCOL_UNKNOWN) )
+		{
+			json_array_append_new(protos, json_string("all protocols"));
+			goto exit;
+		}
 
 		if(stmt->ndpi.ndpiflags & NFT_NDPI_FLAG_JA3S) {
 			json_array_append_new(protos, json_string("ja3s"));
@@ -1442,16 +1458,18 @@ json_t *ndpi_stmt_json(const struct stmt *stmt, struct output_ctx *octx)
 		}
 		if(c > t/2 + 1) {
 			json_array_append_new(protos, json_string("all"));
-			// for (i = 1; i < NDPI_NUM_BITS; i++) {
-			//         if (prot_short_str[i] && !prot_disabled[i] && NDPI_COMPARE_PROTOCOL_TO_BITMASK(info->flags, i) == 0)
-			// 	nft_print(octx, ",-%s", prot_short_str[i]);
-			// }
+			for (i = 1; i < NDPI_NUM_BITS; i++) {
+				if (nft_ndpi_prot_short_str[i] && !nft_ndpi_prot_disabled[i] 
+				&& NDPI_COMPARE_PROTOCOL_TO_BITMASK(stmt->ndpi.proto, i) == 0)
+					json_array_append_new(protos, json_string(nft_ndpi_prot_short_str[i]));
+			}
 			goto exit;
 		}
 
 		for (l = i = 0; i < NDPI_NUM_BITS; i++) {
-		    // if (prot_short_str[i] && !prot_disabled[i] && NDPI_COMPARE_PROTOCOL_TO_BITMASK(info->flags, i) != 0)
-		    //     nft_print(octx, "%s%s",l++ ? ",":"", prot_short_str[i]);
+			if (nft_ndpi_prot_short_str[i] && !nft_ndpi_prot_disabled[i] 
+			&& NDPI_COMPARE_PROTOCOL_TO_BITMASK(stmt->ndpi.proto, i) != 0)
+				json_array_append_new(protos, json_string(nft_ndpi_prot_short_str[i]));
 		}
 		if (json_array_size(protos) > 1) {
 			json_object_set_new(root, "protocols", protos);

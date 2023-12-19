@@ -13,7 +13,7 @@
 
 #include <linux/netfilter/nf_tables.h>
 #include <linux/netfilter/nf_log.h>
-#include <linux/netfilter/nf_ndpi.h>
+#include <libnftnl/ndpi.h>
 
 #include <rule.h>
 #include <statement.h>
@@ -1142,16 +1142,23 @@ static void netlink_gen_ndpi_stmt(struct netlink_linearize_ctx *ctx,
 	struct nftnl_expr *nle;
 
 	nle = alloc_nft_expr("ndpi");
-	if (stmt->ndpi.hostname != NULL) {
+	if (stmt->ndpi.hostname != NULL && (stmt->ndpi.flags & STMT_NDPI_HOSTNAME))
+	{
 		char hostname[NFT_NDPI_HOSTNAME_LEN_MAX] = {};
 
 		expr_to_string(stmt->ndpi.hostname, hostname);
 		nftnl_expr_set_str(nle, NFTNL_EXPR_NDPI_HOSTNAME, hostname);
 	}
 
+	if((stmt->ndpi.flags & STMT_NDPI_FLAGS_PROTO) || (stmt->ndpi.flags & STMT_NDPI_FLAGS_ALL))
+	{
+		nftnl_expr_set(nle, NFTNL_EXPR_NDPI_PROTO,
+					&stmt->ndpi.proto, sizeof(stmt->ndpi.proto));
+	}
+
 	if (stmt->ndpi.ndpiflags)
 		nftnl_expr_set_u16(nle, NFTNL_EXPR_NDPI_FLAGS,
-				   stmt->ndpi.ndpiflags);
+					stmt->ndpi.ndpiflags);
 
 	nft_rule_add_expr(ctx, nle, &stmt->location);
 }
