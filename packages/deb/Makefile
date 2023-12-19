@@ -12,7 +12,7 @@ install:
 	-p hbf-nft-$(STRIPPED_VERSION)-any.deb \
 	--name hbf-nft \
 	--version $(STRIPPED_VERSION) \
-	--architecture all \
+	--architecture deb \
 	--description "nftables command line utility that support ndpi." \
 	--maintainer "Kalashnikov V. kalashnikov.v24@wb.ru" \
 	--after-install ./after-install.sh \
