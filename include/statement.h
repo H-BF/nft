@@ -4,6 +4,7 @@
 #include <list.h>
 #include <expression.h>
 #include <json.h>
+#include <libnftnl/ndpi.h>
 
 extern struct stmt *expr_stmt_alloc(const struct location *loc,
 				    struct expr *expr);
@@ -90,6 +91,8 @@ enum {
 
 struct ndpi_stmt {
 	struct expr		*hostname;
+	struct expr		*protocmd;
+	NDPI_PROTOCOL_BITMASK proto;
 	uint16_t		ndpiflags;
 	uint32_t		flags;
 };

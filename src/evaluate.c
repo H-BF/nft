@@ -19,7 +19,7 @@
 #include <linux/netfilter/nf_synproxy.h>
 #include <linux/netfilter/nf_nat.h>
 #include <linux/netfilter/nf_log.h>
-#include <linux/netfilter/nf_ndpi.h>
+#include <libnftnl/ndpi.h>
 #include <linux/netfilter_ipv4.h>
 #include <netinet/ip_icmp.h>
 #include <netinet/icmp6.h>
@@ -38,6 +38,7 @@
 #include <gmputil.h>
 #include <utils.h>
 #include <xt.h>
+#include <ctype.h>
 
 struct proto_ctx *eval_proto_ctx(struct eval_ctx *ctx)
 {
@@ -4190,15 +4191,16 @@ static int stmt_evaluate_ndpi_hostname(struct eval_ctx *ctx, struct stmt *stmt)
 	size_t offset = 0;
 	struct expr *expr;
 
+	hostname[0] = '\0';
+
 	if (stmt->ndpi.hostname->etype != EXPR_LIST) {
 		if (stmt->ndpi.hostname &&
 		    div_round_up(stmt->ndpi.hostname->len, BITS_PER_BYTE) >= NFT_NDPI_HOSTNAME_LEN_MAX)
 			return expr_error(ctx->msgs, stmt->ndpi.hostname, "ndpi: hostname is too long");
 
-		return 0;
+		expr_to_string(stmt->ndpi.hostname, hostname);
+		goto end;
 	}
-
-	hostname[0] = '\0';
 
 	list_for_each_entry(expr, &stmt->ndpi.hostname->expressions, list) {
 		int ret;
@@ -4222,6 +4224,22 @@ static int stmt_evaluate_ndpi_hostname(struct eval_ctx *ctx, struct stmt *stmt)
 	if (len == 0)
 		return stmt_error(ctx, stmt, "ndpi: hostname is too long");
 
+
+end:
+
+	for(char* s = &hostname[0]; *s; s++) *s = tolower(*s);
+
+	if(hostname[0] == '/') {
+		int re_len = strlen(hostname);
+
+		if(re_len < 3 || hostname[re_len-1] != '/') {
+			return expr_error(ctx->msgs, stmt->ndpi.hostname, "Invalid regexp '%s'\n", hostname);
+		}
+
+		stmt->ndpi.ndpiflags |= NFT_NDPI_FLAG_RE;
+	}
+	stmt->ndpi.ndpiflags |= NFT_NDPI_FLAG_HOST;
+
 	expr = constant_expr_alloc(&stmt->ndpi.hostname->location, &string_type,
 				   BYTEORDER_HOST_ENDIAN,
 				   strlen(hostname) * BITS_PER_BYTE, hostname);
@@ -4231,12 +4249,133 @@ static int stmt_evaluate_ndpi_hostname(struct eval_ctx *ctx, struct stmt *stmt)
 	return 0;
 }
 
+static char *nft_ndpi_prot_short_str[NDPI_NUM_BITS] = { /*NDPI_PROTOCOL_SHORT_STRING,*/ NULL, };
+static char  nft_ndpi_prot_disabled[NDPI_NUM_BITS+1] = { 0, };
+
+static int stmt_evaluate_ndpi_proto(struct eval_ctx *ctx, struct stmt *stmt)
+{
+	char tmp[NFT_NDPI_PROTOCMD_LEN_MAX] = {};
+	char protocmd[NFT_NDPI_PROTOCMD_LEN_MAX];
+	size_t len = sizeof(protocmd);
+	size_t offset = 0;
+	struct expr *expr;
+	char *np;
+	char *n;
+	int num;
+	int op;
+	int i;
+
+	np = &protocmd[0];
+
+	protocmd[0] = '\0';
+
+	if (stmt->ndpi.protocmd->etype != EXPR_LIST) {
+		if (stmt->ndpi.protocmd &&
+		    div_round_up(stmt->ndpi.protocmd->len, BITS_PER_BYTE) >= NFT_NDPI_PROTOCMD_LEN_MAX)
+			return expr_error(ctx->msgs, stmt->ndpi.protocmd, "ndpi: proto line is too long");
+
+		expr_to_string(stmt->ndpi.protocmd, protocmd);
+		goto end;
+	}
+
+	list_for_each_entry(expr, &stmt->ndpi.protocmd->expressions, list) {
+		int ret;
+
+		switch (expr->etype) {
+		case EXPR_VALUE:
+			expr_to_string(expr, tmp);
+			ret = snprintf(protocmd + offset, len, "%s", tmp);
+			break;
+		case EXPR_VARIABLE:
+			ret = snprintf(protocmd + offset, len, "%s",
+				       expr->sym->expr->identifier);
+			break;
+		default:
+			BUG("unknown expression type %s\n", expr_name(expr));
+			break;
+		}
+		SNPRINTF_BUFFER_SIZE(ret, &len, &offset);
+	}
+
+	if (len == 0)
+		return stmt_error(ctx, stmt, "ndpi: proto line is too long");
+
+	expr = constant_expr_alloc(&stmt->ndpi.protocmd->location, &string_type,
+				   BYTEORDER_HOST_ENDIAN,
+				   strlen(protocmd) * BITS_PER_BYTE, protocmd);
+	expr_free(stmt->ndpi.protocmd);
+	stmt->ndpi.protocmd = expr;
+
+end:
+
+	while((n = strtok(np, ",")) != NULL) {
+		num = -1;
+		op = 1;
+
+		if(*n == '-') {
+			op = 0;
+			n++;
+		}
+
+		for (i = 0; i < NDPI_NUM_BITS; i++) {
+		    if(nft_ndpi_prot_short_str[i] && !strcasecmp(nft_ndpi_prot_short_str[i], n)) {
+				num = i;
+				break;
+		    }
+		}
+
+		if(num < 0) {
+			if(strcmp(n, "all")) {
+				return stmt_error(ctx, stmt, "Unknown proto '%s'\n", n);
+		    }
+
+		    for (i = 1; i < NDPI_NUM_BITS; i++) {
+				if(nft_ndpi_prot_short_str[i] && strncmp(nft_ndpi_prot_short_str[i], "badproto_", 9)
+					&& !nft_ndpi_prot_disabled[i])
+				{
+					if(op)
+						NDPI_ADD_PROTOCOL_TO_BITMASK(stmt->ndpi.proto, i);
+					else
+						NDPI_DEL_PROTOCOL_FROM_BITMASK(stmt->ndpi.proto, i);
+				}
+			}
+			stmt->ndpi.flags |= STMT_NDPI_FLAGS_ALL;
+		} else {
+
+			if(nft_ndpi_prot_disabled[num]) {
+				return stmt_error(ctx, stmt, "Disabled proto '%s'\n", n);
+			}
+
+			if(op)
+				NDPI_ADD_PROTOCOL_TO_BITMASK(stmt->ndpi.proto, num);
+			else
+				NDPI_DEL_PROTOCOL_FROM_BITMASK(stmt->ndpi.proto, num);
+		}
+
+		stmt->ndpi.flags |= STMT_NDPI_FLAGS_PROTO;
+		np = NULL;
+	}
+
+	if(NDPI_BITMASK_IS_EMPTY(stmt->ndpi.proto))
+		stmt->ndpi.flags &= ~STMT_NDPI_FLAGS_PROTO;
+
+	return 0;
+}
+
 static int stmt_evaluate_ndpi(struct eval_ctx *ctx, struct stmt *stmt)
 {
 	int ret = 0;
 
-	if (!stmt->ndpi.ndpiflags)
+	if (!stmt->ndpi.ndpiflags && !stmt->ndpi.flags)
 		return stmt_error(ctx, stmt, "ndpi: missing options.");
+
+
+	if ((ret = nft_ndpi_get_protos(nft_ndpi_prot_short_str, nft_ndpi_prot_disabled)) != 0) {
+		return stmt_error(ctx, stmt, "ndpi: kernel module failed!. Error code: %d", ret);
+	}
+
+	if (stmt->ndpi.protocmd)
+		ret = stmt_evaluate_ndpi_proto(ctx, stmt);
 
 	if (stmt->ndpi.ndpiflags & NFT_NDPI_FLAG_ERROR) {
 		if (stmt->ndpi.ndpiflags != NFT_NDPI_FLAG_ERROR)
@@ -4263,19 +4402,24 @@ static int stmt_evaluate_ndpi(struct eval_ctx *ctx, struct stmt *stmt)
 			goto end;
 	}
 
-	if (stmt->ndpi.ndpiflags & (NFT_NDPI_FLAG_P_PROTO | NFT_NDPI_FLAG_M_PROTO | NFT_NDPI_FLAG_INPROGRESS)) {
+	if ((stmt->ndpi.ndpiflags & (NFT_NDPI_FLAG_P_PROTO | NFT_NDPI_FLAG_M_PROTO | NFT_NDPI_FLAG_INPROGRESS)))
+	{
 		if(!(stmt->ndpi.flags & STMT_NDPI_FLAGS_ALL))
-			return stmt_error(ctx, stmt, "ndpi: You need to specify at least one protocol");
+			return stmt_error(ctx, stmt, "ndpi: You need to specify at least one protocol, flags1: %x", stmt->ndpi.flags);
 	}
 
 	if (stmt->ndpi.ndpiflags & (NFT_NDPI_FLAG_JA3S | NFT_NDPI_FLAG_JA3C | NFT_NDPI_FLAG_TLSFP | NFT_NDPI_FLAG_TLSV)) {
 		if(!(stmt->ndpi.flags & STMT_NDPI_FLAGS_PROTO))
-			return stmt_error(ctx, stmt, "ndpi: You need to specify at least one protocol");
+			return stmt_error(ctx, stmt, "ndpi: You need to specify at least one protocol, flags2: %x", stmt->ndpi.flags);
 	}
 
 end:
-	if (stmt->ndpi.hostname)
+	if (stmt->ndpi.hostname && (stmt->ndpi.flags & STMT_NDPI_FLAGS_PROTO))
 		ret = stmt_evaluate_ndpi_hostname(ctx, stmt);
+
+	if(stmt->ndpi.ndpiflags)
+		stmt->ndpi.flags |= STMT_NDPI_FLAGS;
+
 	return ret;
 }
 

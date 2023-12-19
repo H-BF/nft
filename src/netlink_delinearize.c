@@ -1154,6 +1154,19 @@ static void netlink_parse_ndpi(struct netlink_parse_ctx *ctx,
 		stmt->ndpi.flags |= STMT_NDPI_HOSTNAME;
 	}
 
+	if(nftnl_expr_is_set(nle, NFTNL_EXPR_NDPI_PROTO))
+	{
+		const void *data;
+		uint32_t data_len;
+		data = nftnl_expr_get(nle, NFTNL_EXPR_NDPI_PROTO, &data_len);
+		if(data && data_len){
+			memset(&stmt->ndpi.proto, 0, sizeof(stmt->ndpi.proto));
+			memcpy(&stmt->ndpi.proto, data, data_len);
+			stmt->ndpi.flags |= STMT_NDPI_FLAGS_PROTO;
+		}
+
+	}
+
 	if (nftnl_expr_is_set(nle, STMT_NDPI_FLAGS))
 	{
 		stmt->ndpi.ndpiflags =
