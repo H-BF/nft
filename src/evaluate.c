@@ -4414,7 +4414,7 @@ static int stmt_evaluate_ndpi(struct eval_ctx *ctx, struct stmt *stmt)
 	}
 
 end:
-	if (stmt->ndpi.hostname && (stmt->ndpi.flags & STMT_NDPI_FLAGS_PROTO))
+	if (stmt->ndpi.hostname && (stmt->ndpi.flags & STMT_NDPI_HOSTNAME))
 		ret = stmt_evaluate_ndpi_hostname(ctx, stmt);
 
 	if(stmt->ndpi.ndpiflags)
