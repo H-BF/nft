@@ -1,7 +1,7 @@
 #!/bin/bash
 
 PKG_DIR=$(pwd)/packages/deb
-INSTALL_DIR=$PKG_DIR/debian/opt/hbf/
+INSTALL_DIR=$PKG_DIR/debian/opt/swarm/
 
 function clean() {
   make -C $PKG_DIR clean
@@ -10,9 +10,9 @@ function clean() {
 }
 
 function configure() {
-  export PKG_CONFIG_PATH=$PKG_CONFIG_PATH:/opt/hbf/lib/pkgconfig/
+  export PKG_CONFIG_PATH=$PKG_CONFIG_PATH:/opt/swarm/lib/pkgconfig/
   ./autogen.sh
-  ./configure --prefix=$INSTALL_DIR --with-pkgdst=/opt/hbf --with-json
+  ./configure --prefix=$INSTALL_DIR --with-pkgdst=/opt/swarm --with-json
 }
 
 function build() {
