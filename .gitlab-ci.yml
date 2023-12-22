@@ -17,7 +17,7 @@ stages:
     - if: $CI_COMMIT_BRANCH =~ /^(feature|fix)-.*$/ || $CI_COMMIT_BRANCH =~ /^dev$/
       variables:
         VERSION: 0-$CI_COMMIT_BRANCH-$CI_COMMIT_SHORT_SHA
-        
+
     - if: "$CI_COMMIT_TAG =~ /^v([0-9]+)\\.([0-9]+)\\.([0-9]+)-?([a-zA-Z0-9\\.]*)\\+?([a-zA-Z0-9\\.]*)$/"
       variables:
         VERSION: $CI_COMMIT_TAG-$CI_COMMIT_SHORT_SHA
@@ -29,14 +29,14 @@ build-deb:
   extends: .template_default
   script:
     - apt install -y asciidoc
-    - cd libnftnl 
-    - ./autogen.sh
-    - ./configure
-    - make
-    - make install
+    - cd libnftnl
+    - chmod -R 755 .
+    - ./install.sh
+    - apt install ./packages/deb/swarm-libnftnl-${STRIPPED_VERSION}-any.deb
+    - mv ./packages/deb/swarm-libnftnl-${STRIPPED_VERSION}-any.deb ..
     - cd ..
     - ./install.sh
-    - mv ./packages/deb/hbf-nft-${STRIPPED_VERSION}-any.deb .
+    - mv ./packages/deb/swarm-nft-${STRIPPED_VERSION}-any.deb .
   artifacts:
     paths:
       - "*.deb"
@@ -48,6 +48,7 @@ push:
     - build-deb
   script:
     - ls -lah
-    - 'curl -X POST -u "$NEXUS_USER:$NEXUS_PASSWORD" -H "Content-Type: multipart/form-data; charset=utf-8" --data-binary "@hbf-nft-${STRIPPED_VERSION}-any.deb" "$NEXUS_URL/$NEXUS_REPO/"'
+    - 'curl -X POST -u "$NEXUS_USER:$NEXUS_PASSWORD" -H "Content-Type: multipart/form-data; charset=utf-8" --data-binary "@swarm-libnftnl-${STRIPPED_VERSION}-any.deb" "$NEXUS_URL/$NEXUS_REPO/"'
+    - 'curl -X POST -u "$NEXUS_USER:$NEXUS_PASSWORD" -H "Content-Type: multipart/form-data; charset=utf-8" --data-binary "@swarm-nft-${STRIPPED_VERSION}-any.deb" "$NEXUS_URL/$NEXUS_REPO/"'
   variables:
     GIT_STRATEGY: none
