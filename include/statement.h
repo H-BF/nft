@@ -93,7 +93,7 @@ struct ndpi_stmt {
 	struct expr		*hostname;
 	struct expr		*protocmd;
 	NDPI_PROTOCOL_BITMASK proto;
-	uint16_t		ndpiflags;
+	uint32_t		ndpiflags;
 	uint32_t		flags;
 };
 
@@ -109,7 +109,7 @@ enum {
 
 struct log_stmt {
 	struct expr		*prefix;
-	unsigned int		snaplen;
+	unsigned int	snaplen;
 	uint16_t		group;
 	uint16_t		qthreshold;
 	uint32_t		level;

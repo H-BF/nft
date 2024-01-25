@@ -1157,7 +1157,7 @@ static void netlink_gen_ndpi_stmt(struct netlink_linearize_ctx *ctx,
 	}
 
 	if (stmt->ndpi.ndpiflags)
-		nftnl_expr_set_u16(nle, NFTNL_EXPR_NDPI_FLAGS,
+		nftnl_expr_set_u32(nle, NFTNL_EXPR_NDPI_FLAGS,
 					stmt->ndpi.ndpiflags);
 
 	nft_rule_add_expr(ctx, nle, &stmt->location);

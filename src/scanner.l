@@ -420,8 +420,10 @@ addrstring	({macaddr}|{ip4addr}|{ip6addr})
 
 "ndpi"			{ scanner_push_start_cond(yyscanner, SCANSTATE_STMT_NDPI); return NDPI; }
 <SCANSTATE_STMT_NDPI>{
-	"host"		{ return HOSTNAME; }
-	"proto"		{ return NDPI_PROTO; }
+	"host"			{ return HOSTNAME; }
+	"proto"			{ return NDPI_PROTO; }
+	"untracked"		{ return NDPI_UNTRACKED; }
+	"inprogress"	{ return NDPI_INPROGRESS; }
 }
 
 "log"			{ scanner_push_start_cond(yyscanner, SCANSTATE_STMT_LOG); return LOG; }

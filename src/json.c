@@ -1374,47 +1374,43 @@ json_t *log_stmt_json(const struct stmt *stmt, struct output_ctx *octx)
 
 json_t *ndpi_stmt_json(const struct stmt *stmt, struct output_ctx *octx)
 {
-	json_t *root = json_object(), *flags = json_array();
+	json_t *root = json_object(), *protos = json_array();
 	int i,c,l,t;
 	char *nft_ndpi_prot_short_str[NDPI_NUM_BITS] = { /*NDPI_PROTOCOL_SHORT_STRING,*/ NULL, };
 	char  nft_ndpi_prot_disabled[NDPI_NUM_BITS+1] = { 0, };
 
 	if(stmt->ndpi.ndpiflags & NFT_NDPI_FLAG_ERROR) {
-		json_array_append_new(flags, json_string("error"));
+		json_object_set_new(root, "error", json_null());
 		goto exit;
 	}
 
 	nft_ndpi_get_protos(nft_ndpi_prot_short_str, nft_ndpi_prot_disabled);
 
 	if(stmt->ndpi.ndpiflags & NFT_NDPI_FLAG_INPROGRESS) {
-		json_t* inprogress = json_array();
+		json_object_set_new(root, "inprogress", json_null());
 
 		for (l = i = 0; i < NDPI_NUM_BITS; i++) {
 			if (nft_ndpi_prot_short_str[i] && !nft_ndpi_prot_disabled[i]
 			&& NDPI_COMPARE_PROTOCOL_TO_BITMASK(stmt->ndpi.proto, i) != 0)
-				json_array_append_new(inprogress, json_string(nft_ndpi_prot_short_str[i]));
+			{
+				json_array_append_new(protos, json_string(nft_ndpi_prot_short_str[i]));
+				++l;
+			}
 		}
 		if(l == 0) {
-			json_array_append_new(inprogress, json_string("no protos"));
+			json_array_append_new(protos, json_string("no"));
 		}
 
-		if (json_array_size(inprogress) > 1) {
-			json_object_set_new(flags, "inprogress", inprogress);
-		} else {
-			if (json_array_size(inprogress))
-				json_object_set(flags, "inprogress", json_array_get(inprogress, 0));
-			json_decref(inprogress);
-		}
 		goto exit;
 	}
 
 	if(stmt->ndpi.ndpiflags & NFT_NDPI_FLAG_UNTRACKED) {
-		json_array_append_new(flags, json_string("untracked"));
+		json_object_set_new(root, "untracked", json_null());
 		goto exit;
 	}
 
 	if(stmt->ndpi.ndpiflags & NFT_NDPI_FLAG_HAVE_MASTER) {
-		json_array_append_new(flags, json_string("have-master"));
+		json_object_set_new(root, "have-master", json_null());
 		goto exit;
 	}
 
@@ -1427,9 +1423,9 @@ json_t *ndpi_stmt_json(const struct stmt *stmt, struct output_ctx *octx)
 	}
 
 	if((stmt->ndpi.ndpiflags & NFT_NDPI_FLAG_M_PROTO) && !(stmt->ndpi.ndpiflags & NFT_NDPI_FLAG_P_PROTO))
-		json_array_append_new(flags, json_string("match-master"));
+		json_object_set_new(root, "match-master", json_null());
 	if(!(stmt->ndpi.ndpiflags & NFT_NDPI_FLAG_M_PROTO) && (stmt->ndpi.ndpiflags & NFT_NDPI_FLAG_P_PROTO))
-		json_array_append_new(flags, json_string("match-proto"));
+		json_object_set_new(root, "match-proto", json_null());
 
 	if (stmt->ndpi.flags & STMT_NDPI_HOSTNAME) {
 		char hostname[NFT_NDPI_HOSTNAME_LEN_MAX] = {};
@@ -1439,22 +1435,22 @@ json_t *ndpi_stmt_json(const struct stmt *stmt, struct output_ctx *octx)
 	if(!c) goto exit;
 
 	if (stmt->ndpi.flags & STMT_NDPI_FLAGS_PROTO) {
-		json_t *protos = json_array();
+
 		if( c == t-1 &&
 		    !NDPI_COMPARE_PROTOCOL_TO_BITMASK(stmt->ndpi.proto, NDPI_PROTOCOL_UNKNOWN) )
 		{
-			json_array_append_new(protos, json_string("all protocols"));
+			json_array_append_new(protos, json_string("all"));
 			goto exit;
 		}
 
 		if(stmt->ndpi.ndpiflags & NFT_NDPI_FLAG_JA3S) {
-			json_array_append_new(protos, json_string("ja3s"));
+			json_object_set_new(root, "ja3s", json_null());
 		} else if(stmt->ndpi.ndpiflags & NFT_NDPI_FLAG_JA3C) {
-			json_array_append_new(protos, json_string("ja3c"));
+			json_object_set_new(root, "ja3c", json_null());
 		} else if(stmt->ndpi.ndpiflags & NFT_NDPI_FLAG_TLSFP) {
-			json_array_append_new(protos, json_string("tlsfp"));
+			json_object_set_new(root, "tlsfp", json_null());
 		} else if(stmt->ndpi.ndpiflags & NFT_NDPI_FLAG_TLSV) {
-			json_array_append_new(protos, json_string("tlsv"));
+			json_object_set_new(root, "tlsv", json_null());
 		}
 		if(c > t/2 + 1) {
 			json_array_append_new(protos, json_string("all"));
@@ -1467,28 +1463,18 @@ json_t *ndpi_stmt_json(const struct stmt *stmt, struct output_ctx *octx)
 		}
 
 		for (l = i = 0; i < NDPI_NUM_BITS; i++) {
-			if (nft_ndpi_prot_short_str[i] && !nft_ndpi_prot_disabled[i] 
+			if (nft_ndpi_prot_short_str[i] && !nft_ndpi_prot_disabled[i]
 			&& NDPI_COMPARE_PROTOCOL_TO_BITMASK(stmt->ndpi.proto, i) != 0)
 				json_array_append_new(protos, json_string(nft_ndpi_prot_short_str[i]));
 		}
-		if (json_array_size(protos) > 1) {
-			json_object_set_new(root, "protocols", protos);
-		} else {
-			if (json_array_size(protos))
-				json_object_set(root, "protocols",
-					json_array_get(protos, 0));
-			json_decref(protos);
-		}
 	}
-
 exit:
-	if (json_array_size(flags) > 1) {
-		json_object_set_new(root, "flags", flags);
+	if (json_array_size(protos) > 1) {
+		json_object_set_new(root, "proto", protos);
 	} else {
-		if (json_array_size(flags))
-			json_object_set(root, "flags",
-					json_array_get(flags, 0));
-		json_decref(flags);
+		if (json_array_size(protos))
+			json_object_set(root, "proto", json_array_get(protos, 0));
+		json_decref(protos);
 	}
 
 	if (!json_object_size(root)) {

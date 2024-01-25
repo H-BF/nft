@@ -603,6 +603,8 @@ int nft_lex(void *, void *, void *);
 %token NDPI			"ndpi"
 %token HOSTNAME		"host"
 %token NDPI_PROTO		"proto"
+%token NDPI_INPROGRESS	"inprogress"
+%token NDPI_UNTRACKED	"untracked"
 
 %token LIMIT			"limit"
 %token RATE			"rate"
@@ -3485,6 +3487,16 @@ ndpi_arg	:	HOSTNAME		string
 				free_const($2);
 				$<stmt>0->ndpi.protocmd	 = expr;
 				$<stmt>0->ndpi.flags 	|= STMT_NDPI_FLAGS_PROTO;
+			}
+			| NDPI_INPROGRESS
+			{
+				$<stmt>0->ndpi.ndpiflags |= NFT_NDPI_FLAG_INPROGRESS;
+				$<stmt>0->ndpi.flags 	|= STMT_NDPI_FLAGS;
+			}
+			| NDPI_UNTRACKED
+			{
+				$<stmt>0->ndpi.ndpiflags |= NFT_NDPI_FLAG_UNTRACKED;
+				$<stmt>0->ndpi.flags 	|= STMT_NDPI_FLAGS;
 			}
 			;
 

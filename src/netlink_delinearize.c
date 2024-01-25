@@ -1167,10 +1167,9 @@ static void netlink_parse_ndpi(struct netlink_parse_ctx *ctx,
 
 	}
 
-	if (nftnl_expr_is_set(nle, STMT_NDPI_FLAGS))
+	if (nftnl_expr_is_set(nle, NFTNL_EXPR_NDPI_FLAGS))
 	{
-		stmt->ndpi.ndpiflags =
-			nftnl_expr_get_u16(nle, NFTNL_EXPR_NDPI_FLAGS);
+		stmt->ndpi.ndpiflags = nftnl_expr_get_u32(nle, NFTNL_EXPR_NDPI_FLAGS);
 		stmt->ndpi.flags |= STMT_NDPI_FLAGS;
 	}
 
