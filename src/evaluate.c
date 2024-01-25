@@ -4396,7 +4396,8 @@ static int stmt_evaluate_ndpi(struct eval_ctx *ctx, struct stmt *stmt)
 			goto end;
 	}
 	if (stmt->ndpi.ndpiflags & NFT_NDPI_FLAG_INPROGRESS) {
-		if((stmt->ndpi.ndpiflags & (NFT_NDPI_FLAG_M_PROTO | NFT_NDPI_FLAG_P_PROTO)) && (stmt->ndpi.flags & STMT_NDPI_FLAGS_ALL))
+		if((stmt->ndpi.ndpiflags & (NFT_NDPI_FLAG_M_PROTO | NFT_NDPI_FLAG_P_PROTO))
+		&& ((stmt->ndpi.flags & STMT_NDPI_FLAGS_ALL) || (stmt->ndpi.flags & STMT_NDPI_FLAGS_PROTO)))
 			return stmt_error(ctx, stmt, "ndpi: cant use '--inprogress' with options match-master,match-proto,proto");
 	    else
 			goto end;
@@ -4404,7 +4405,7 @@ static int stmt_evaluate_ndpi(struct eval_ctx *ctx, struct stmt *stmt)
 
 	if ((stmt->ndpi.ndpiflags & (NFT_NDPI_FLAG_P_PROTO | NFT_NDPI_FLAG_M_PROTO | NFT_NDPI_FLAG_INPROGRESS)))
 	{
-		if(!(stmt->ndpi.flags & STMT_NDPI_FLAGS_ALL))
+		if(!(stmt->ndpi.flags & STMT_NDPI_FLAGS_ALL) && !(stmt->ndpi.flags & STMT_NDPI_FLAGS_PROTO))
 			return stmt_error(ctx, stmt, "ndpi: You need to specify at least one protocol, flags1: %x", stmt->ndpi.flags);
 	}
 

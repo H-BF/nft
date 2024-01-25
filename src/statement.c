@@ -390,14 +390,14 @@ static void ndpi_stmt_print(const struct stmt *stmt, struct output_ctx *octx)
 	nft_ndpi_get_protos(nft_ndpi_prot_short_str, nft_ndpi_prot_disabled);
 
 	if(stmt->ndpi.ndpiflags & NFT_NDPI_FLAG_INPROGRESS) {
-		nft_print(octx, " %sndpi inprogress ",cinv);
+		nft_print(octx, " %sndpi inprogress proto ",cinv);
 		for (l = i = 0; i < NDPI_NUM_BITS; i++) {
 			if (nft_ndpi_prot_short_str[i] && !nft_ndpi_prot_disabled[i]
 				&& NDPI_COMPARE_PROTOCOL_TO_BITMASK(stmt->ndpi.proto, i) != 0)
 				nft_print(octx, "%s%s", l++ ? "," : "", nft_ndpi_prot_short_str[i]);
 		}
 		if(l == 0) {
-			nft_print(octx, " no protos");
+			nft_print(octx, "no ");
 		}
 		return;
 	}
@@ -434,7 +434,7 @@ static void ndpi_stmt_print(const struct stmt *stmt, struct output_ctx *octx)
 	if( c == t-1 &&
 	    !NDPI_COMPARE_PROTOCOL_TO_BITMASK(stmt->ndpi.proto, NDPI_PROTOCOL_UNKNOWN) )
 	{
-		nft_print(octx, " all protocols");
+		nft_print(octx, " proto all ");
 		return;
 	}
 
@@ -447,7 +447,7 @@ static void ndpi_stmt_print(const struct stmt *stmt, struct output_ctx *octx)
 	} else if(stmt->ndpi.ndpiflags & NFT_NDPI_FLAG_TLSV) {
 		nft_print(octx, " tlsv " );
 	} else {
-		nft_print(octx, " protocol%s ",c > 1 ? "s":"");
+		nft_print(octx, " proto ");
 	}
 	if(c > t/2 + 1) {
 		nft_print(octx, "all");
