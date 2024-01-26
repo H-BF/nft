@@ -48,7 +48,10 @@ push:
     - build-deb
   script:
     - ls -lah
-    - 'curl -X POST -u "$NEXUS_USER:$NEXUS_PASSWORD" -H "Content-Type: multipart/form-data; charset=utf-8" --data-binary "@swarm-libnftnl-${STRIPPED_VERSION}-any.deb" "$NEXUS_URL/$NEXUS_REPO/"'
-    - 'curl -X POST -u "$NEXUS_USER:$NEXUS_PASSWORD" -H "Content-Type: multipart/form-data; charset=utf-8" --data-binary "@swarm-nft-${STRIPPED_VERSION}-any.deb" "$NEXUS_URL/$NEXUS_REPO/"'
+    - |+
+      for FILE in $(ls | grep .deb)
+      do
+        curl -f -v -i -u "${NEXUS_USER}:${NEXUS_PASSWORD}" -H "Content-Type: multipart/form-data" --data-binary "@$FILE" "${NEXUS_URL}/${NEXUS_REPO}/"
+      done
   variables:
     GIT_STRATEGY: none

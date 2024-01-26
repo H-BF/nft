@@ -4371,7 +4371,7 @@ static int stmt_evaluate_ndpi(struct eval_ctx *ctx, struct stmt *stmt)
 
 
 	if ((ret = nft_ndpi_get_protos(nft_ndpi_prot_short_str, nft_ndpi_prot_disabled)) != 0) {
-		return stmt_error(ctx, stmt, "ndpi: kernel module failed!. Error code: %d", ret);
+		return stmt_error(ctx, stmt, "ndpi: kernel module failed!. Reason: %s", nft_ndpi_error_reason[ret]);
 	}
 
 	if (stmt->ndpi.protocmd)
