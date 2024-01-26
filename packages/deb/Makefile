@@ -40,3 +40,4 @@ install:
 clean:
 	rm -rf *.deb
 	rm -rf $(SUBDIRS)
+	rm -rf ${LIBNFTNL_VERSION}
