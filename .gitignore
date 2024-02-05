@@ -36,5 +36,8 @@ tags
 
 .vscode/
 *.deb
-/packages/deb/debian/*
-!/packages/deb/debian/DEBIAN/
+packages/content/*
+packages/deb/*
+!packages/deb/Makefile.am
+packages/rpm/*
+!packages/rpm/Makefile.am

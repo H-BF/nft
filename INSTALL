@@ -24,6 +24,9 @@ Installation instructions for nftables
 
   - optional: asciidoc: required for building man-page
 
+  - optional: fpm: required for building deb or rpm packages
+  	(See https://fpm.readthedocs.io/en/v1.15.1/index.html)
+
  Configuring and compiling
  =========================
 
@@ -78,8 +81,36 @@ Installation instructions for nftables
 
 	To enable JSON support, this requires libjansson.
 
+ --with-build-deb
+
+	To enable build with deb package
+
+ --with-build-rpm
+
+	To enable build with rpm package
+
+ --with-pkgdst=
+
+	Path where the package will be installed. By default all will be installed
+	into path determinated by the --prefix option
+
  Run "make" to compile nftables, "make install" to install it in the
- configured paths.
+ configured paths. Before running make you may need to determinate pkgconfig path
+ for the libnftnl library installed early
+ (e.g. export PKG_CONFIG_PATH=$PKG_CONFIG_PATH:/opt/swarm/lib/pkgconfig/)
+
+ Configuration with package
+ ==========================
+ To enable build a package just configure one of the option:
+	./configure --with-build-deb
+	make build-deb
+	or
+	./configure --with-build-rpm
+	make build-rpm
+ If you need to install a package to a specific location
+ you have to specify the path using the --with-pkgdst option:
+	./configure --with-pkgdst=/opt/swarm/ --with-build-deb
+	make build-deb
 
  Python support
  ==============
