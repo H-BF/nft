@@ -20,8 +20,13 @@ build:
   script:
     - git clone https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab-internal.wildberries.ru/swarm/system/nftables/libnftnl
     - cd libnftnl
-    - ./install.sh
+    - ./autogen.sh
+    - ./configure '--with-pkgdst=/opt/swarm/' '--with-build-deb'
+    - make build-deb
     - apt install ./packages/deb/swarm-libnftnl-${STRIPPED_VERSION}-any.deb
     - cd ..
-    - ./install.sh
+    - export PKG_CONFIG_PATH=$PKG_CONFIG_PATH:/opt/swarm/lib/pkgconfig/
+    - ./autogen.sh
+    - ./configure '--with-pkgdst=/opt/swarm/' '--with-build-deb' '--with-json'
+    - make build-deb
     - mv ./packages/deb/swarm-nft-${STRIPPED_VERSION}-any.deb .

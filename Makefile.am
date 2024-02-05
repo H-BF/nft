@@ -407,5 +407,31 @@ EXTRA_DIST += \
 	tests \
 	$(NULL)
 
+SUBDIRS =
+
+if BUILD_DEB_OR_RPM
+SUBDIRS += packages
+endif
+
+if BUILD_DEB
+SUBDIRS += packages/deb
+
+build-deb: clean-deb install
+	$(MAKE) -C packages build-deb
+clean-deb:
+	$(MAKE) -C packages clean-deb
+
+endif
+
+if BUILD_RPM
+SUBDIRS += packages/rpm
+
+build-rpm: clean-rpm install
+	$(MAKE) -C packages build-rpm
+clean-rpm:
+	$(MAKE) -C packages clean-rpm
+
+endif
+
 pkgconfigdir = $(libdir)/pkgconfig
 pkgconfig_DATA = libnftables.pc
