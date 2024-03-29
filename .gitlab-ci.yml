@@ -31,7 +31,7 @@ build:
     - make build-deb
     - mv ./packages/deb/swarm-nft-${STRIPPED_VERSION}-any.deb .
 
-.defectdojo-init-run:
+.defectdojo-init-run2:
   needs: []
   rules:
     - when: always
@@ -41,3 +41,8 @@ build:
   image: harbor.wildberries.ru/devops/docker/alpine-bash:3.17
   script:
     - echo 2
+
+defectdojo-init:
+  stage: check approve
+  extends:
+    - .defectdojo-init-run2
