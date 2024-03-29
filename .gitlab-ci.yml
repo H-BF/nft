@@ -30,3 +30,14 @@ build:
     - ./configure '--with-pkgdst=/opt/swarm/' '--with-build-deb' '--with-json'
     - make build-deb
     - mv ./packages/deb/swarm-nft-${STRIPPED_VERSION}-any.deb .
+
+.defectdojo-init-run:
+  needs: []
+  rules:
+    - when: always
+  allow_failure: true
+  tags:
+    - linux-docker-executor
+  image: harbor.wildberries.ru/devops/docker/alpine-bash:3.17
+  script:
+    - echo 2
