@@ -1,5 +1,5 @@
 # NFTABLES WITH nDPI
-This is a fork of the official [nftables](https://git.netfilter.org/nftables/) command line utility extended to support nftables rules with the [nDPI](https://gitlab-internal.wildberries.ru/swarm/swarm/ndpi) forked from the [netfilter ndpi](https://github.com/vel21ripn/nDPI).
+This is a fork of the official [nftables](https://git.netfilter.org/nftables/) command line utility extended to support nftables rules with the [nDPI](https://github.com/H-BF/nDPI) forked from the [netfilter ndpi](https://github.com/vel21ripn/nDPI).
 
 ## How To Compile
 ### Prerequisites:
@@ -7,7 +7,7 @@ This is a fork of the official [nftables](https://git.netfilter.org/nftables/) c
 
   - libmnl: git://git.netfilter.org/libmnl.git
 
-  - [swarm-libnftnl](https://gitlab-internal.wildberries.ru/swarm/system/nftables/libnftnl)
+  - [swarm-libnftnl](https://github.com/H-BF/libnftnl)
 
   - flex
 
@@ -26,7 +26,7 @@ This is a fork of the official [nftables](https://git.netfilter.org/nftables/) c
   - optional: [fpm](https://fpm.readthedocs.io/en/v1.15.1/index.html): required for building deb or rpm packages
 
 ### Configuring and compiling
- - Install [swarm-libnftnl](https://gitlab-internal.wildberries.ru/swarm/system/nftables/libnftnl) and all needed tools from the Prerequisites list
+ - Install [swarm-libnftnl](https://github.com/H-BF/libnftnl) and all needed tools from the Prerequisites list
  - Run "sh autogen.sh" to generate the configure script
 
  - ./configure [options]
@@ -123,7 +123,7 @@ Rules with nDPI features have to begin with the keyword "ndpi". After it is poss
         Note: The above options are available by using preloaded ndpi netfilter kernel module xt_ndpi.ko (See https://gitlab-internal.wildberries.ru/swarm/swarm/ndpi)
 
 ### Examples:
-Before creating nftables rules with the ndpi options you should [install](https://gitlab-internal.wildberries.ru/swarm/swarm/ndpi)  and run the ndpi netfilter kernel module:
+Before creating nftables rules with the ndpi options you should [install](https://github.com/H-BF/nDPI)  and run the ndpi netfilter kernel module:
 
  - If the ndpi kernel module is still not running, run it:
 
