@@ -120,7 +120,7 @@ Rules with nDPI features have to begin with the keyword "ndpi". After it is poss
  - untracked - Match if detection is not started for this connection
  - inprogress - Match if ptotocol detection in progress. Used with the option "proto"
 
-        Note: The above options are available by using preloaded ndpi netfilter kernel module xt_ndpi.ko (See https://gitlab-internal.wildberries.ru/swarm/swarm/ndpi)
+        Note: The above options are available by using preloaded ndpi netfilter kernel module xt_ndpi.ko (See https://github.com/H-BF/nDPI)
 
 ### Examples:
 Before creating nftables rules with the ndpi options you should [install](https://github.com/H-BF/nDPI)  and run the ndpi netfilter kernel module:
